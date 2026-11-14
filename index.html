@@ -2,6 +2,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>For Bacha 🎀</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Parisienne&family=Quicksand:wght@500;700&family=Caveat:wght@500;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 :root{--sky:#C9E5F8;--pink:#F8D7E8;--lav:#DCCCF5;--lil:#EAE0FA;--peri:#C8C8F0;--milk:#FFFAFD;--ink:#5a4b7a;--glass:rgba(255,250,253,.66);--b1:#C9E5F8;--b2:#F8D7E8;--hot:#e98bb5;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 html{scroll-behavior:smooth;scroll-padding-top:env(safe-area-inset-top,0px)}*{box-sizing:border-box}
@@ -114,8 +115,7 @@ table{width:100%;border-collapse:collapse;font-size:.9rem;text-align:left}td,th{
 
 <div id="admin"><section class="sec"><h1>Admin</h1><div id="adm" class="glass" style="width:100%">Loading…</div></section></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
 /* ===== EDIT ME ===== */
 /* ===== LETTER: edit freely (types: h heading, b bold highlight, p paragraph, sh shayari, i italic, sg signature) ===== */
@@ -312,7 +312,38 @@ const fl=new Set();CONFIG.reasons.forEach((r,i)=>{const b=E("button","flip");b.s
 /* questions */
 const Qd={};
 Q.forEach(q=>{const d=E("div","q glass");d.appendChild(E("p",null,q.t));const o=E("div","o");
- const send=a=>{if(S.q[q.k])return;S.q[q.k]={a,t:Date.now()};lock(q.k);log("answered_"+q.k);if(Q.every(x=>S.q[x.k])){const h=pi;setTimeout(()=>{if(pi===h)go(pi+1)},2200)}flush().then(ok=>{if(!ok)d.querySelector(".ty").textContent="Saved here, but I couldn’t reach the inbox 💭"})};
+
+ const send =a=> {
+  if (S.q[q.k]) return;
+
+  S.q[q.k] = {
+    a,
+    t: Date.now()
+  };
+
+  lock(q.k);
+  log("answered_" + q.k);
+  flush();
+
+  sendResponseEmail(q, a).then(ok => {
+    const status = d.querySelector(".ty");
+
+    if (status) {
+      status.textContent = ok
+        ? "Sent to your inbox successfully! 💗"
+        : "Saved in this browser, but email couldn't be sent 💭";
+    }
+  });
+
+  if (Q.every(x => S.q[x.k])) {
+    const h = pi;
+    setTimeout(() => {
+      if (pi === h) go(pi + 1);
+    }, 2200);
+  }
+
+
+};
  if(q.txt){const t=E("textarea");t.maxLength=500;t.setAttribute("aria-label",q.t);const b=E("button",null,"Submit 💌");b.onclick=()=>{const v=t.value.trim();if(!v){t.focus();return}send(v)};o.append(t,b)}
  else q.o.forEach(a=>{const b=E("button",null,a);b.onclick=()=>{b.classList.add("sel");send(a)};o.appendChild(b)});
  d.append(o,E("div","ty","Thank you! Saved with love 💗"));Qd[q.k]=d;$("qs").appendChild(d)});
@@ -326,202 +357,96 @@ function note(f,t){const o=ac.createOscillator(),g=ac.createGain();o.type="sine"
 const mel=[523,659,784,659,587,698,880,698,523,659,784,1047];let ni=0;
 $("mp").onclick=()=>{pl=!pl;$("mp").textContent=pl?"⏸":"🎵";if(CONFIG.music){au=au||new Audio(CONFIG.music);au.loop=1;pl?au.play():au.pause()}else if(pl){ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume();iv=setInterval(()=>{note(mel[ni++%mel.length],ac.currentTime)},500)}else clearInterval(iv);log(pl?"music_play":"music_pause")};
 $("mm").onclick=()=>{mu=!mu;$("mm").textContent=mu?"🔇":"🔊";if(au)au.muted=!!mu};
-/* ===== SUPABASE BACKEND ===== */
-const SUPABASE_URL = window.SITE_CONFIG?.SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = window.SITE_CONFIG?.SUPABASE_ANON_KEY || "";
-const ADMIN_EMAIL = (window.SITE_CONFIG?.ADMIN_EMAIL || "").toLowerCase().trim();
-let sb = null;
-let visitorId = "";
-let visitorToken = "";
-let saveTimer = null;
 
-function backendReady(){
-  return !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
+/* ===== EMAILJS BACKEND ===== */
+
+const EMAILJS_SERVICE_ID = "service_birthday";
+const EMAILJS_TEMPLATE_ID = "template_n098olk";
+const EMAILJS_PUBLIC_KEY = "P4aTzVKLSTRUoRbFv";
+
+if (typeof emailjs !== "undefined") {
+  emailjs.init({
+    publicKey: EMAILJS_PUBLIC_KEY
+  });
+  console.log("EmailJS initialized successfully 💗");
+} else {
+  console.error("EmailJS SDK not loaded!");
 }
-function getVisitorId(){
-  const key = "for-bacha-visitor-id";
-  let id = localStorage.getItem(key);
-  if(!id){
-    id = (crypto.randomUUID ? crypto.randomUUID() :
-      "v-" + Date.now() + "-" + Math.random().toString(36).slice(2));
-    localStorage.setItem(key,id);
-  }
-  const tokenKey = "for-bacha-private-token";
-  visitorToken = localStorage.getItem(tokenKey);
-  if(!visitorToken){
-    visitorToken = crypto.randomUUID ? crypto.randomUUID() :
-      "t-" + Date.now() + "-" + Math.random().toString(36).slice(2);
-    localStorage.setItem(tokenKey,visitorToken);
-  }
-  return id;
+
+// Save responses locally as a fallback
+function log(eventName) {
+  S.ev.push({ e: eventName, t: Date.now() });
+
+  if (S.ev.length > 80) S.ev.shift();
+
+  clearTimeout(tm);
+  tm = setTimeout(flush, 1200);
 }
-function showBackendMessage(message){
-  const el = $("backend-note");
-  if(el) el.textContent = message;
-}
-function log(e){
-  S.ev.push({e,t:Date.now()});
-  if(S.ev.length>80) S.ev.shift();
-  clearTimeout(saveTimer);
-  saveTimer=setTimeout(flush,1200);
-}
-async function flush(){
-  if(!sb || !visitorId){ saveFail=1; return false; }
-  try{
-    const {error}=await sb.rpc("save_my_response",{
-      p_visitor_id:visitorId,
-      p_visitor_token:visitorToken,
-      p_q:S.q,
-      p_ev:S.ev,
-      p_first:S.first,
-      p_last:Date.now()
-    });
-    if(error) throw error;
-    saveFail=0;
-    showBackendMessage("");
+
+async function flush() {
+  try {
+    localStorage.setItem(
+      "for-bacha-answers",
+      JSON.stringify({
+        q: S.q,
+        ev: S.ev,
+        first: S.first,
+        last: Date.now()
+      })
+    );
     return true;
-  }catch(err){
-    console.error("Could not save response:",err);
-    saveFail=1;
-    showBackendMessage("Your answers are saved in this browser, but online saving is not configured yet.");
+  } catch (error) {
+    console.error("Local saving failed:", error);
     return false;
   }
 }
-async function initPublicBackend(){
-  if(!backendReady()){
-    showBackendMessage("Online response saving will be available after the site owner adds the Supabase settings.");
-    return;
-  }
-  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-  visitorId=getVisitorId();
-  try{
-    const {data,error}=await sb.rpc("get_my_response",{
-      p_visitor_id:visitorId,
-      p_visitor_token:visitorToken
-    });
-    if(error) throw error;
-    if(data){
-      S.q=data.q||{};
-      S.ev=data.ev||[];
-      S.first=data.first||S.first;
-      Q.forEach(q=>{if(S.q[q.k]) lock(q.k)});
-    }
-    clearTimeout(saveTimer);
-    saveTimer=setTimeout(flush,500);
-  }catch(err){
-    console.error("Could not load saved response:",err);
-    showBackendMessage("Could not connect to the response inbox. Please try again later.");
+
+// Send the responses to your Gmail through EmailJS
+async function sendResponseEmail(question, answer) {
+  console.log("Email sending started...");
+
+  const allAnswers = Q
+    .filter(q => S.q[q.k])
+    .map(q => q.t + "\n" + S.q[q.k].a)
+    .join("\n\n");
+
+  const templateParams = {
+    name: "Himanshu",
+    time: new Date().toLocaleString(),
+    message:
+      question.t + "\n" + answer +
+      "\n\nAll answers so far:\n" + allAnswers
+  };
+
+  try {
+    const response = await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      EMAILJS_TEMPLATE_ID,
+      templateParams
+    );
+
+    console.log("EmailJS response:", response);
+    saveFail = 0;
+    return true;
+
+  } catch (error) {
+    saveFail = 1;
+    console.error("EmailJS ERROR:", error);
+    return false;
   }
 }
 
-/* ===== PRIVATE ADMIN DASHBOARD ===== */
-function adminShell(){
-  $("welcome").style.display="none";
-  $("main").style.display="none";
-  $("mus").style.display="none";
-  $("nav").style.display="none";
-  $("admin").style.display="block";
-  const section=$("admin").querySelector(".sec");
-  section.style.display="flex";
-  section.style.minHeight="100vh";
-  section.style.padding="4rem 1rem";
+// The old Supabase admin dashboard is not used.
+// EmailJS sends notifications directly to your configured email.
+if (location.hash === "#admin") {
+  $("welcome").style.display = "none";
+  $("admin").style.display = "block";
+  $("admin").querySelector(".sec").style.display = "flex";
+  $("adm").textContent =
+    "Responses are delivered to your email. EmailJS does not provide a private admin dashboard.";
 }
-function adminLoginUI(message=""){
-  const A=$("adm"); A.replaceChildren();
-  const title=E("h2",null,"Private response dashboard 🎀");
-  const desc=E("p","small","Sign in with the owner email account to view Himanshu’s saved responses.");
-  const email=E("input"); email.type="email"; email.placeholder="Owner email"; email.autocomplete="username";
-  email.value=ADMIN_EMAIL;
-  email.style.cssText="width:100%;max-width:420px;padding:.8rem;border:2px solid var(--lav);border-radius:12px;font:inherit;color:var(--ink);background:white";
-  const pass=E("input"); pass.type="password"; pass.placeholder="Password"; pass.autocomplete="current-password";
-  pass.style.cssText=email.style.cssText;
-  const login=E("button",null,"Sign in privately");
-  const status=E("p","small",message); status.setAttribute("role","status");
-  login.onclick=async()=>{
-    if(!sb){status.textContent="Supabase is not configured. Add the settings in config.js.";return}
-    const entered=email.value.trim().toLowerCase();
-    if(!entered || !pass.value){status.textContent="Enter your owner email and password.";return}
-    if(!ADMIN_EMAIL || entered!==ADMIN_EMAIL){status.textContent="This email is not the configured dashboard owner.";return}
-    login.disabled=true; status.textContent="Signing in…";
-    const {data,error}=await sb.auth.signInWithPassword({email:entered,password:pass.value});
-    login.disabled=false;
-    if(error){status.textContent=error.message;return}
-    if((data.user?.email||"").toLowerCase()!==ADMIN_EMAIL){
-      await sb.auth.signOut(); status.textContent="This account is not authorized."; return;
-    }
-    loadAdminDashboard();
-  };
-  A.append(title,desc,email,pass,login,status);
-}
-async function loadAdminDashboard(){
-  const A=$("adm"); A.replaceChildren();
-  const header=E("div");
-  header.append(E("h2",null,"Your private inbox 💌"),E("p","small","Only the authenticated owner account can read or delete these responses."));
-  const signout=E("button",null,"Sign out");
-  signout.onclick=async()=>{await sb.auth.signOut();adminLoginUI("You have signed out.")};
-  header.appendChild(signout); A.appendChild(header);
-  const status=E("p","small","Loading responses…"); A.appendChild(status);
-  async function refresh(){
-    const {data,error}=await sb.from("responses").select("*").order("last",{ascending:false});
-    if(error){status.textContent="Could not load responses: "+error.message;return}
-    drawAdmin(A,data||[]);
-  }
-  await refresh();
-  const channel=sb.channel("admin-responses")
-    .on("postgres_changes",{event:"*",schema:"public",table:"responses"},refresh).subscribe();
-  window.addEventListener("beforeunload",()=>sb.removeChannel(channel),{once:true});
-}
-const fd=t=>t?new Date(Number(t)).toLocaleString():"-";
-function drawAdmin(A,rows){
-  const old=A.querySelector(".admin-data"); if(old)old.remove();
-  const wrap=E("div","admin-data"); wrap.style.width="100%";
-  const done=rows.filter(r=>Q.every(q=>r.q&&r.q[q.k])).length;
-  const st=E("div","stats");
-  [["Responses",rows.length],["Completed",done],["Messages",rows.filter(r=>r.q&&r.q.q3).length]].forEach(([l,n])=>{
-    const c=E("div","glass");c.append(E("b",null,n),E("span",null,l));st.appendChild(c)
-  });
-  wrap.appendChild(st);
-  const ex=E("button",null,"Export CSV");
-  ex.onclick=()=>{
-    const esc=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
-    const csv=[["visitor","first_seen","last_seen",...Q.map(q=>q.k),"sections_and_surprises"].join(",")]
-      .concat(rows.map(r=>[r.visitor_id,fd(r.first),fd(r.last),...Q.map(q=>r.q&&r.q[q.k]?r.q[q.k].a:""),(r.ev||[]).map(e=>e.e).join(" | ")].map(esc).join(","))).join("\n");
-    const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
-    const url=URL.createObjectURL(blob);const a=E("a");a.href=url;a.download="for-bacha-responses.csv";a.click();URL.revokeObjectURL(url);
-  };
-  wrap.appendChild(ex);
-  if(!rows.length){wrap.appendChild(E("p",null,"No responses yet. They’ll appear here after the first answer 💗"));A.appendChild(wrap);return}
-  const w=E("div","scroll"),t=E("table");
-  t.innerHTML="<tr><th>Visitor</th><th>Answers</th><th>Opened</th><th>Action</th></tr>";
-  rows.forEach(r=>{
-    const tr=E("tr");
-    tr.append(E("td",null,fd(r.first)+" → "+fd(r.last)));
-    tr.append(E("td",null,Q.map(q=>r.q&&r.q[q.k]?q.t+": "+r.q[q.k].a:"").filter(Boolean).join("\n")));
-    tr.append(E("td",null,(r.ev||[]).map(e=>new Date(e.t).toLocaleTimeString()+" "+e.e).join("\n")));
-    tr.children[1].style.whiteSpace=tr.children[2].style.whiteSpace="pre-wrap";
-    const x=E("button",null,"Delete");
-    x.onclick=async()=>{
-      if(!confirm("Delete this response permanently?"))return;
-      const {error}=await sb.from("responses").delete().eq("visitor_id",r.visitor_id);
-      if(error)alert("Could not delete: "+error.message);
-    };
-    const c=E("td");c.appendChild(x);tr.appendChild(c);t.appendChild(tr);
-  });
-  w.appendChild(t);wrap.appendChild(w);A.appendChild(wrap);
-}
-async function initAdmin(){
-  adminShell();
-  if(!backendReady()){adminLoginUI("Add your Supabase project URL, anon key and owner email in config.js first.");return}
-  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-  const {data:{session}}=await sb.auth.getSession();
-  if(ADMIN_EMAIL && session && (session.user.email||"").toLowerCase()===ADMIN_EMAIL)loadAdminDashboard();
-  else{
-    if(session)await sb.auth.signOut();
-    adminLoginUI();
-  }
-}
-if(location.hash==="#admin")initAdmin();
-else initPublicBackend();
-addEventListener("hashchange",()=>location.reload());
+
+addEventListener("hashchange", () => location.reload());
+
 
 </script></body></html>
